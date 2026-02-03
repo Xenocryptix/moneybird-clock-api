@@ -57,15 +57,13 @@ export default function ClockInForm({ users, projects, contacts }: Props) {
             return;
         }
         console.log('[Client] Calling getActiveEntry for:', selectedUserId);
-        setIsLoading(true);
+        // Do not set loading state here so the form is immediately available (optimistic UI)
         try {
             const entry = await getActiveEntry(selectedUserId);
             console.log('[Client] getActiveEntry result:', entry);
             setActiveEntry(entry);
         } catch (error) {
             console.error('[Client] Error fetching active entry:', error);
-        } finally {
-            setIsLoading(false);
         }
     }
     checkActive();
