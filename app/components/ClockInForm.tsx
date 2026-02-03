@@ -131,8 +131,12 @@ export default function ClockInForm({ users, projects, contacts }: Props) {
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {users.map((u) => (
             <button
+              type="button"
               key={u.id}
-              onClick={() => setSelectedUserId(u.id)}
+              onClick={() => {
+                console.log('[Client] User clicked:', u);
+                setSelectedUserId(String(u.id));
+              }}
               className="aspect-square flex flex-col items-center justify-center p-4 bg-gray-50 border-2 border-gray-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all text-gray-800 shadow-sm"
             >
               <div className="text-3xl font-bold mb-2 text-blue-600">
@@ -153,7 +157,7 @@ export default function ClockInForm({ users, projects, contacts }: Props) {
       {/* User Header */}
       <div className="flex justify-between items-center pb-4 border-b border-gray-100">
         <h3 className="text-lg font-semibold text-gray-800">
-          Hi, {users.find((u) => u.id === selectedUserId)?.name}
+          Hi, {users.find((u) => String(u.id) === selectedUserId)?.name}
         </h3>
         <button
           onClick={handleSwitchUser}
