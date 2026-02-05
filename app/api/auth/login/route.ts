@@ -12,9 +12,7 @@ export async function GET() {
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: 'code',
-    scope: 'sales_invoices time_entries settings',
-    // Moneybird docs say: "The scope parameter is optional. If you don't specify a scope, the access token will have access to all resources."
-    // So I will omit scope to get full access as per instructions "integrate with the Moneybird API".
+    scope: 'time_entries',
   });
 
   redirect(`https://moneybird.com/oauth/authorize?${params.toString()}`);

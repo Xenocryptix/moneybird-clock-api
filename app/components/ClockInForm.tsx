@@ -20,6 +20,14 @@ interface Contact {
   lastname: string;
 }
 
+interface TimeEntry {
+  id: string;
+  user_id: string | number;
+  description: string;
+  started_at: string;
+  ended_at?: string | null;
+}
+
 interface Props {
   users: User[];
   projects: Project[];
@@ -32,7 +40,7 @@ export default function ClockInForm({ users, projects, contacts }: Props) {
   const [projectId, setProjectId] = useState('');
   const [contactId, setContactId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [activeEntry, setActiveEntry] = useState<any>(null);
+  const [activeEntry, setActiveEntry] = useState<TimeEntry | null>(null);
 
   // Load saved user from local storage
   useEffect(() => {
@@ -94,7 +102,7 @@ export default function ClockInForm({ users, projects, contacts }: Props) {
     if (!activeEntry) return;
     setIsLoading(true);
     try {
-        await clockOut(activeEntry.id, selectedUserId);
+        await clockOut(activeEntry.id);
         setActiveEntry(null);
     } catch (err) {
         alert('Failed to clock out');
@@ -140,7 +148,7 @@ export default function ClockInForm({ users, projects, contacts }: Props) {
               <div className="text-3xl font-bold mb-2 text-blue-600">
                 {u.name.charAt(0).toUpperCase()}
               </div>
-              <span className="text-sm font-medium text-center break-words w-full">
+              <span className="text-sm font-medium text-center wrap-break-words w-full">
                 {u.name}
               </span>
             </button>
@@ -198,8 +206,9 @@ export default function ClockInForm({ users, projects, contacts }: Props) {
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Project (Optional)</label>
+              <label htmlFor="project" className="block text-sm font-medium text-gray-700 mb-1">Project (Optional)</label>
                 <select
+                id="project"
                     className="block w-full rounded-md border-gray-300 shadow-sm p-2 border text-gray-900 focus:ring-blue-500 focus:border-blue-500"
                     value={projectId}
                     onChange={e => setProjectId(e.target.value)}
@@ -212,8 +221,9 @@ export default function ClockInForm({ users, projects, contacts }: Props) {
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Contact (Optional)</label>
+              <label htmlFor="contact" className="block text-sm font-medium text-gray-700 mb-1">Contact (Optional)</label>
                 <select
+                id="contact"
                     className="block w-full rounded-md border-gray-300 shadow-sm p-2 border text-gray-900 focus:ring-blue-500 focus:border-blue-500"
                     value={contactId}
                     onChange={e => setContactId(e.target.value)}

@@ -5,6 +5,15 @@ import { redirect } from 'next/navigation';
 
 const BASE_URL = 'https://moneybird.com/api/v2';
 const ADMINISTRATION_ID = process.env.ADMINISTRATION_ID;
+const REQUEST_TOKEN = process.env.REQUEST_TOKEN;
+
+type TimeEntry = {
+  id: string;
+  user_id: string | number;
+  description: string;
+  started_at: string;
+  ended_at?: string | null;
+};
 
 if (!ADMINISTRATION_ID) {
   throw new Error('ADMINISTRATION_ID is not set');
@@ -33,15 +42,44 @@ export async function setManualToken(formData: FormData) {
     cookieStore.set('moneybird_token', token.trim(), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
       path: '/',
-      maxAge: 60 * 60 * 24 * 30, // 30 days
+      maxAge: 60 * 60 * 24 * 400, // 400 days
     });
   }
   redirect('/');
 }
 
-async function fetchMoneybird(endpoint: string, options: RequestInit = {}) {
-  const token = await getToken();
+export async function startManualAuth(formData: FormData) {
+  const clientId = formData.get('client_id')?.toString();
+  const clientSecret = formData.get('client_secret')?.toString();
+  const redirectUri = formData.get('redirect_uri')?.toString();
+
+  if (!clientId || !clientSecret || !redirectUri) {
+    throw new Error('Missing credentials');
+  }
+
+  const cookieStore = await cookies();
+  cookieStore.set('moneybird_oauth_config', JSON.stringify({ clientId, clientSecret, redirectUri }), {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 60 * 10, // 10 minutes
+    path: '/',
+  });
+
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    response_type: 'code',
+    scope: 'time_entries',
+  });
+
+  redirect(`https://moneybird.com/oauth/authorize?${params.toString()}`);
+}
+
+async function fetchMoneybird(endpoint: string, options: RequestInit = {}, authToken?: string) {
+  const token = authToken || await getToken();
   if (!token) {
     throw new Error('Not authenticated');
   }
@@ -77,10 +115,11 @@ export async function getData() {
       fetchMoneybird('/contacts.json'),
     ]);
 
-    return { users, projects, contacts };
+    return { users, projects, contacts, error: null as string | null };
   } catch (error) {
     console.error('Error fetching data:', error);
-    return null;
+    const message = error instanceof Error ? error.message : String(error);
+    return { users: [], projects: [], contacts: [], error: message };
   }
 }
 
@@ -91,8 +130,8 @@ export async function getActiveEntry(userId: string) {
         console.log(`[getActiveEntry] Response for ${userId}:`, typeof allEntries === 'object' ? 'received array/object' : allEntries);
         
         if (Array.isArray(allEntries)) {
-           const active = allEntries.find((e: any) => e.user_id == userId && !e.ended_at);
-           return active || null;
+          const active = (allEntries as TimeEntry[]).find((e) => e.user_id == userId && !e.ended_at);
+          return active || null;
         }
         return null;
     } catch (e) {
@@ -116,10 +155,10 @@ export async function clockIn(userId: string, description: string, projectId: st
   return fetchMoneybird('/time_entries.json', {
     method: 'POST',
     body: JSON.stringify(body),
-  });
+  }, REQUEST_TOKEN);
 }
 
-export async function clockOut(entryId: string, userId: string) {
+export async function clockOut(entryId: string) {
     // To clock out, we update the entry with ended_at
     const body = {
         time_entry: {
@@ -130,5 +169,5 @@ export async function clockOut(entryId: string, userId: string) {
     return fetchMoneybird(`/time_entries/${entryId}.json`, {
         method: 'PATCH',
         body: JSON.stringify(body)
-    });
+    }, REQUEST_TOKEN);
 }
