@@ -126,7 +126,15 @@ export async function getData() {
 export async function getActiveEntry(userId: string) {
     try {
         console.log(`[getActiveEntry] Fetching for userId: ${userId}`);
-        const allEntries = await fetchMoneybird(`/time_entries.json?filter=user_id:${userId},state:all,include_active:true`, { cache: 'no-store' });
+        const authToken = REQUEST_TOKEN || undefined;
+        console.log(
+          `[getActiveEntry] Auth path: ${authToken ? 'request_token' : 'cookie_token'}`
+        );
+        const allEntries = await fetchMoneybird(
+          `/time_entries.json?filter=user_id:${userId},state:all,include_active:true`,
+          { cache: 'no-store' },
+          authToken
+        );
         console.log(`[getActiveEntry] Response for ${userId}:`, typeof allEntries === 'object' ? 'received array/object' : allEntries);
         
         if (Array.isArray(allEntries)) {
@@ -136,7 +144,7 @@ export async function getActiveEntry(userId: string) {
         return null;
     } catch (e) {
         console.error(e);
-        return null; // Assume none
+        return null;
     }
 }
 

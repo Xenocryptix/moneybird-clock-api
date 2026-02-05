@@ -15,6 +15,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Clock",
   description: "Clock in and out with Moneybird",
+  icons: {
+    icon: "https://www.softwerk.digital/favicon.png",
+  },
 };
 
 export default function RootLayout({

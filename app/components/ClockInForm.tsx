@@ -40,6 +40,7 @@ export default function ClockInForm({ users, projects, contacts }: Props) {
   const [projectId, setProjectId] = useState('');
   const [contactId, setContactId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingActive, setIsCheckingActive] = useState(false);
   const [activeEntry, setActiveEntry] = useState<TimeEntry | null>(null);
 
   // Load saved user from local storage
@@ -65,13 +66,15 @@ export default function ClockInForm({ users, projects, contacts }: Props) {
             return;
         }
         console.log('[Client] Calling getActiveEntry for:', selectedUserId);
-        // Do not set loading state here so the form is immediately available (optimistic UI)
+      setIsCheckingActive(true);
         try {
             const entry = await getActiveEntry(selectedUserId);
             console.log('[Client] getActiveEntry result:', entry);
             setActiveEntry(entry);
         } catch (error) {
             console.error('[Client] Error fetching active entry:', error);
+      } finally {
+        setIsCheckingActive(false);
         }
     }
     checkActive();
@@ -127,6 +130,7 @@ export default function ClockInForm({ users, projects, contacts }: Props) {
     setContactId('');
     setDescription('');
     setActiveEntry(null);
+    setIsCheckingActive(false);
     localStorage.removeItem('moneybird_user_id');
   };
 
@@ -173,7 +177,11 @@ export default function ClockInForm({ users, projects, contacts }: Props) {
         </button>
       </div>
 
-      {isLoading ? (
+      {isCheckingActive ? (
+        <div className="flex justify-center p-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        </div>
+      ) : isLoading ? (
          <div className="flex justify-center p-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
          </div>
