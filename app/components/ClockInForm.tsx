@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { clockIn, clockOut, getActiveEntry } from '../actions';
+import { useState, useEffect, useMemo } from 'react';
+import { clockIn, clockOut, getActiveEntry, getWeeklyEntries } from '../actions';
 
 interface User {
   id: string;
@@ -28,6 +28,11 @@ interface TimeEntry {
   ended_at?: string | null;
 }
 
+interface DailyHours {
+  label: string;
+  hours: number;
+}
+
 interface Props {
   users: User[];
   projects: Project[];
@@ -42,6 +47,8 @@ export default function ClockInForm({ users, projects, contacts }: Props) {
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingActive, setIsCheckingActive] = useState(false);
   const [activeEntry, setActiveEntry] = useState<TimeEntry | null>(null);
+  const [weeklyEntries, setWeeklyEntries] = useState<TimeEntry[]>([]);
+  const [isLoadingWeek, setIsLoadingWeek] = useState(false);
 
   // Load saved user from local storage
   useEffect(() => {
@@ -83,6 +90,67 @@ export default function ClockInForm({ users, projects, contacts }: Props) {
     }
   }, [selectedUserId]);
 
+  useEffect(() => {
+    async function loadWeek() {
+      if (!selectedUserId) {
+        setWeeklyEntries([]);
+        return;
+      }
+      setIsLoadingWeek(true);
+      try {
+        const entries = await getWeeklyEntries(selectedUserId);
+        setWeeklyEntries(Array.isArray(entries) ? entries : []);
+      } catch (error) {
+        console.error('[Client] Error fetching weekly entries:', error);
+        setWeeklyEntries([]);
+      } finally {
+        setIsLoadingWeek(false);
+      }
+    }
+    loadWeek();
+  }, [selectedUserId]);
+
+  const weeklyHours = useMemo<DailyHours[]>(() => {
+    if (!selectedUserId) return [];
+
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const diffToMonday = (dayOfWeek + 6) % 7;
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - diffToMonday);
+    weekStart.setHours(0, 0, 0, 0);
+
+    const dayBuckets: DailyHours[] = Array.from({ length: 7 }, (_, index) => {
+      const day = new Date(weekStart);
+      day.setDate(weekStart.getDate() + index);
+      const label = day.toLocaleDateString(undefined, {
+        weekday: 'short',
+        day: '2-digit',
+        month: 'short',
+      });
+      return { label, hours: 0 };
+    });
+
+    for (const entry of weeklyEntries) {
+      const started = new Date(entry.started_at);
+      const ended = entry.ended_at ? new Date(entry.ended_at) : new Date();
+      const dayIndex = Math.floor(
+        (new Date(started.getFullYear(), started.getMonth(), started.getDate()).getTime() -
+          weekStart.getTime()) /
+          (1000 * 60 * 60 * 24)
+      );
+
+      if (dayIndex < 0 || dayIndex > 6) continue;
+
+      const durationMs = Math.max(0, ended.getTime() - started.getTime());
+      dayBuckets[dayIndex].hours += durationMs / (1000 * 60 * 60);
+    }
+
+    return dayBuckets;
+  }, [selectedUserId, weeklyEntries]);
+
+  const weeklyTotal = weeklyHours.reduce((sum, day) => sum + day.hours, 0);
+
   const handleClockIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUserId) return;
@@ -93,6 +161,8 @@ export default function ClockInForm({ users, projects, contacts }: Props) {
         setDescription('');
         setProjectId('');
         setContactId('');
+      const entries = await getWeeklyEntries(selectedUserId);
+      setWeeklyEntries(Array.isArray(entries) ? entries : []);
     } catch (err) {
         alert('Failed to clock in');
         console.error(err);
@@ -107,6 +177,8 @@ export default function ClockInForm({ users, projects, contacts }: Props) {
     try {
         await clockOut(activeEntry.id);
         setActiveEntry(null);
+      const entries = await getWeeklyEntries(selectedUserId);
+      setWeeklyEntries(Array.isArray(entries) ? entries : []);
     } catch (err) {
         alert('Failed to clock out');
         console.error(err);
@@ -131,6 +203,7 @@ export default function ClockInForm({ users, projects, contacts }: Props) {
     setDescription('');
     setActiveEntry(null);
     setIsCheckingActive(false);
+    setWeeklyEntries([]);
     localStorage.removeItem('moneybird_user_id');
   };
 
@@ -252,6 +325,29 @@ export default function ClockInForm({ users, projects, contacts }: Props) {
             </button>
         </form>
       )}
+
+      <div className="border-t border-gray-100 pt-4">
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="text-sm font-semibold text-gray-800">This Week</h4>
+          {isLoadingWeek ? (
+            <span className="text-xs text-gray-500">Loading...</span>
+          ) : (
+            <span className="text-xs text-gray-600">Total: {weeklyTotal.toFixed(2)}h</span>
+          )}
+        </div>
+        {weeklyHours.length === 0 && !isLoadingWeek ? (
+          <p className="text-sm text-gray-500">No entries this week.</p>
+        ) : (
+          <div className="space-y-2">
+            {weeklyHours.map((day) => (
+              <div key={day.label} className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">{day.label}</span>
+                <span className="font-medium text-gray-900">{day.hours.toFixed(2)}h</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

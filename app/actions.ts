@@ -107,6 +107,10 @@ async function fetchMoneybird(endpoint: string, options: RequestInit = {}, authT
   return res.json();
 }
 
+function getPreferredAuthToken() {
+  return REQUEST_TOKEN || undefined;
+}
+
 export async function getData() {
   try {
     const [users, projects, contacts] = await Promise.all([
@@ -126,7 +130,7 @@ export async function getData() {
 export async function getActiveEntry(userId: string) {
     try {
         console.log(`[getActiveEntry] Fetching for userId: ${userId}`);
-        const authToken = REQUEST_TOKEN || undefined;
+        const authToken = getPreferredAuthToken();
         console.log(
           `[getActiveEntry] Auth path: ${authToken ? 'request_token' : 'cookie_token'}`
         );
@@ -148,6 +152,19 @@ export async function getActiveEntry(userId: string) {
     }
 }
 
+export async function getWeeklyEntries(userId: string) {
+  const params = new URLSearchParams({
+    filter: `user_id:${userId},period:this_week,state:all`,
+  });
+
+  const authToken = getPreferredAuthToken();
+  return fetchMoneybird(
+    `/time_entries.json?${params.toString()}`,
+    { cache: 'no-store' },
+    authToken
+  );
+}
+
 export async function clockIn(userId: string, description: string, projectId: string | null, contactId: string | null) {
   const body = {
     time_entry: {
@@ -163,7 +180,7 @@ export async function clockIn(userId: string, description: string, projectId: st
   return fetchMoneybird('/time_entries.json', {
     method: 'POST',
     body: JSON.stringify(body),
-  }, REQUEST_TOKEN);
+  }, getPreferredAuthToken());
 }
 
 export async function clockOut(entryId: string) {
@@ -177,5 +194,5 @@ export async function clockOut(entryId: string) {
     return fetchMoneybird(`/time_entries/${entryId}.json`, {
         method: 'PATCH',
         body: JSON.stringify(body)
-    }, REQUEST_TOKEN);
+    }, getPreferredAuthToken());
 }
