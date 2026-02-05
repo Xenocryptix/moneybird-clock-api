@@ -72,7 +72,7 @@ export async function startManualAuth(formData: FormData) {
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: 'code',
-    scope: 'time_entries',
+    scope: 'time_entries settings',
   });
 
   redirect(`https://moneybird.com/oauth/authorize?${params.toString()}`);
