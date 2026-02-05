@@ -39,6 +39,13 @@ interface Props {
   contacts: Contact[];
 }
 
+const formatHoursToHHMM = (hours: number) => {
+  const totalMinutes = Math.round(hours * 60);
+  const wholeHours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${String(wholeHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+};
+
 export default function ClockInForm({ users, projects, contacts }: Props) {
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [description, setDescription] = useState('');
@@ -332,7 +339,7 @@ export default function ClockInForm({ users, projects, contacts }: Props) {
           {isLoadingWeek ? (
             <span className="text-xs text-gray-500">Loading...</span>
           ) : (
-            <span className="text-xs text-gray-600">Total: {weeklyTotal.toFixed(2)}h</span>
+            <span className="text-xs text-gray-600">Total: {formatHoursToHHMM(weeklyTotal)}</span>
           )}
         </div>
         {weeklyHours.length === 0 && !isLoadingWeek ? (
@@ -342,7 +349,7 @@ export default function ClockInForm({ users, projects, contacts }: Props) {
             {weeklyHours.map((day) => (
               <div key={day.label} className="flex items-center justify-between text-sm">
                 <span className="text-gray-600">{day.label}</span>
-                <span className="font-medium text-gray-900">{day.hours.toFixed(2)}h</span>
+                <span className="font-medium text-gray-900">{formatHoursToHHMM(day.hours)}</span>
               </div>
             ))}
           </div>
