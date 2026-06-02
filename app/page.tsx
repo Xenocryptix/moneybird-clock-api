@@ -1,11 +1,46 @@
+import { headers } from 'next/headers';
 import { checkAuth, getData, logout } from './actions';
 import ClockInForm from './components/ClockInForm';
 import ManualLoginForm from './components/ManualLoginForm';
 import ClientAuthForm from './components/ClientAuthForm';
 
+// REDIRECT_URI is derived automatically from the request when not set explicitly.
+// The basePath logic mirrors next.config.js so the callback path matches in IIS prod and dev.
+async function resolveRedirectUri(): Promise<string> {
+  if (process.env.REDIRECT_URI) {
+    return process.env.REDIRECT_URI;
+  }
+
+  const h = await headers();
+  const host = h.get('x-forwarded-host') ?? h.get('host');
+  if (!host) {
+    return '';
+  }
+
+  // Scheme resolution. Note: under iisnode, x-forwarded-proto reflects the internal
+  // IIS->Node hop (http over a named pipe), NOT the client's protocol, so it can't be
+  // trusted there. IIS terminates TLS and serves the public site over https.
+  const isLocal = host.startsWith('localhost') || host.startsWith('127.0.0.1');
+  let proto: string;
+  if (isLocal) {
+    proto = 'http';
+  } else if (process.env.IISNODE_VERSION) {
+    proto = 'https';
+  } else {
+    proto = h.get('x-forwarded-proto')?.split(',')[0].trim() ?? 'https';
+  }
+
+  const iisDefaultBasePath = process.env.IISNODE_VERSION ? 'TheodenClient/Clock' : '';
+  const rawBasePath =
+    process.env.NEXT_PUBLIC_BASE_PATH || process.env.BASE_PATH || iisDefaultBasePath;
+  const basePath = rawBasePath ? `/${rawBasePath.replace(/^\/+|\/+$/g, '')}` : '';
+
+  return `${proto}://${host}${basePath}/api/auth/callback`;
+}
+
 export default async function Home() {
   const isAuthenticated = await checkAuth();
-  const redirectUri = process.env.REDIRECT_URI;
+  const redirectUri = await resolveRedirectUri();
 
   if (!isAuthenticated) {
     return (

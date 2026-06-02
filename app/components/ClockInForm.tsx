@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { clockIn, clockOut, getActiveEntry, getWeeklyEntries } from '../actions';
+import SearchableSelect from './SearchableSelect';
 
 interface User {
   id: string;
@@ -203,6 +204,9 @@ export default function ClockInForm({ users, projects, contacts }: Props) {
       return names.join(' ').trim() || c.id;
   };
 
+  const projectOptions = (projects ?? []).map((p) => ({ id: String(p.id), label: p.name }));
+  const contactOptions = (contacts ?? []).map((c) => ({ id: String(c.id), label: getContactName(c) }));
+
   const handleSwitchUser = () => {
     setSelectedUserId('');
     setProjectId('');
@@ -293,35 +297,23 @@ export default function ClockInForm({ users, projects, contacts }: Props) {
                 />
             </div>
 
-            <div>
-              <label htmlFor="project" className="block text-sm font-medium text-gray-700 mb-1">Project (Optional)</label>
-                <select
-                id="project"
-                    className="block w-full rounded-md border-gray-300 shadow-sm p-2 border text-gray-900 focus:ring-blue-500 focus:border-blue-500"
-                    value={projectId}
-                    onChange={e => setProjectId(e.target.value)}
-                >
-                    <option value="">-- None --</option>
-                    {projects && projects.map(p => (
-                        <option key={p.id} value={p.id}>{p.name}</option> 
-                    ))}
-                </select>
-            </div>
+            <SearchableSelect
+                label="Project (Optional)"
+                inputId="project"
+                options={projectOptions}
+                value={projectId}
+                onChange={setProjectId}
+                placeholder="Search projects..."
+            />
 
-            <div>
-              <label htmlFor="contact" className="block text-sm font-medium text-gray-700 mb-1">Contact (Optional)</label>
-                <select
-                id="contact"
-                    className="block w-full rounded-md border-gray-300 shadow-sm p-2 border text-gray-900 focus:ring-blue-500 focus:border-blue-500"
-                    value={contactId}
-                    onChange={e => setContactId(e.target.value)}
-                >
-                    <option value="">-- None --</option>
-                    {contacts && contacts.map(c => (
-                        <option key={c.id} value={c.id}>{getContactName(c)}</option>
-                    ))}
-                </select>
-            </div>
+            <SearchableSelect
+                label="Contact (Optional)"
+                inputId="contact"
+                options={contactOptions}
+                value={contactId}
+                onChange={setContactId}
+                placeholder="Search contacts..."
+            />
 
             <button
                 type="submit"
